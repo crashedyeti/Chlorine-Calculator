@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a1f3c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Cl₂ Calc">
+  <title>Chlorine PPM Calculator</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #0a1f3c;
+      --bg2:    #0d3358;
+      --card:   rgba(255,255,255,0.07);
+      --bdr:    rgba(255,255,255,0.13);
+      --accent: #00c6ff;
+      --blue:   #0072ff;
+      --text:   #f0f8ff;
+      --muted:  rgba(240,248,255,0.52);
+      --green:  #22c55e;
+      --yellow: #f59e0b;
+      --red:    #ef4444;
+      --r: 18px;
+      --tab-h: 68px;
+    }
+
+    html { height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(160deg, var(--bg) 0%, var(--bg2) 100%);
+      min-height: 100vh;
+      color: var(--text);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .app {
+      max-width: 440px;
+      margin: 0 auto;
+      padding: env(safe-area-inset-top, 0px) 18px calc(var(--tab-h) + env(safe-area-inset-bottom) + 12px);
+    }
+
+    /* ── Pages ── */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── Tab bar ── */
+    .tabbar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: calc(var(--tab-h) + env(safe-area-inset-bottom));
+      padding-bottom: env(safe-area-inset-bottom);
+      background: rgba(8,24,46,0.97);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      z-index: 200;
+    }
+    .tab {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 3px; background: none; border: none;
+      color: var(--muted); font-size: 10.5px; font-weight: 600;
+      cursor: pointer; transition: color 0.2s;
+      padding: 6px 0;
+    }
+    .tab-icon { font-size: 23px; line-height: 1; }
+    .tab.active { color: var(--accent); }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      padding: 26px 0 18px;
+    }
+    .logo { font-size: 46px; display: block; margin-bottom: 8px;
+            filter: drop-shadow(0 4px 12px rgba(0,198,255,0.4)); }
+    h1 {
+      font-size: 22px; font-weight: 800;
+      background: linear-gradient(135deg, #fff 30%, var(--accent));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--bdr);
+      border-radius: var(--r);
+      padding: 18px;
+      margin-bottom: 13px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    /* ── Section labels ── */
+    .sec-label {
+      font-size: 10.5px; font-weight: 700; color: var(--accent);
+      text-transform: uppercase; letter-spacing: 0.6px;
+      margin-bottom: 12px;
+    }
+
+    /* ── Inputs ── */
+    .input-row { display: flex; gap: 13px; }
+    .field { flex: 1; display: flex; flex-direction: column; }
+
+    label, .field-label {
+      font-size: 10.5px; font-weight: 700; color: var(--accent);
+      text-transform: uppercase; letter-spacing: 0.6px;
+      display: block; margin-bottom: 7px;
+    }
+
+    input[type="number"], select, input[type="text"] {
+      width: 100%;
+      background: rgba(0,0,0,0.35);
+      border: 1.5px solid rgba(255,255,255,0.16);
+      border-radius: 11px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      caret-color: var(--accent);
+    }
+    input[type="number"]:focus, select:focus, input[type="text"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,198,255,0.15);
+    }
+
+    /* Big number inputs (calc page) */
+    .big-input {
+      font-size: 28px; font-weight: 700;
+      padding: 13px 10px; text-align: center;
+      -moz-appearance: textfield; appearance: textfield;
+    }
+    .big-input::-webkit-inner-spin-button,
+    .big-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    /* Regular inputs (dose page) */
+    .reg-input {
+      font-size: 18px; font-weight: 600;
+      padding: 12px 14px;
+      -moz-appearance: textfield; appearance: textfield;
+    }
+    .reg-input::-webkit-inner-spin-button,
+    .reg-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    select {
+      font-size: 14px; padding: 12px 14px;
+      -webkit-appearance: none; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2300c6ff' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
+    }
+    select option { background: #0d3358; }
+
+    .hint { font-size: 11px; color: var(--muted); text-align: center; margin-top: 5px; }
+
+    /* ── Button ── */
+    .btn {
+      width: 100%; background: linear-gradient(135deg, var(--blue), var(--accent));
+      border: none; border-radius: 13px; color: #fff;
+      font-size: 16px; font-weight: 700; padding: 16px;
+      margin-top: 14px; cursor: pointer; letter-spacing: 0.3px;
+      box-shadow: 0 6px 24px rgba(0,114,255,0.3);
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:active { opacity: 0.82; transform: scale(0.985); }
+
+    .btn-sm {
+      background: rgba(0,198,255,0.12);
+      border: 1px solid rgba(0,198,255,0.3);
+      border-radius: 10px; color: var(--accent);
+      font-size: 13px; font-weight: 700;
+      padding: 9px 16px; cursor: pointer;
+      transition: background 0.2s;
+      box-shadow: none;
+    }
+    .btn-sm:active { background: rgba(0,198,255,0.22); }
+
+    /* ── Calc result ── */
+    .result-card { display: none; }
+    .result-card.show { display: block; }
+
+    .ppm-block { text-align: center; padding: 4px 0 10px; }
+    .ppm-number {
+      font-size: 68px; font-weight: 900; line-height: 1; letter-spacing: -2px;
+      background: linear-gradient(135deg, #fff 20%, var(--accent));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .ppm-label { font-size: 15px; color: var(--muted); margin-top: 2px; }
+
+    .badge-wrap { text-align: center; margin: 8px 0 12px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 7px 16px; border-radius: 30px;
+      font-size: 13.5px; font-weight: 700;
+    }
+    .badge-safe   { background: rgba(34,197,94,0.18);  color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+    .badge-low    { background: rgba(245,158,11,0.18); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+    .badge-danger { background: rgba(239,68,68,0.18);  color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+
+    .rec { font-size: 13px; color: var(--muted); text-align: center; line-height: 1.55; }
+
+    hr { border: none; border-top: 1px solid var(--bdr); margin: 14px 0; }
+
+    .breakdown { font-size: 13px; }
+    .br-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; }
+    .br-label { color: var(--muted); }
+    .br-val   { font-weight: 600; }
+
+    .hocl-bar-wrap { margin: 8px 0 4px; }
+    .hocl-bar-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .hocl-bar-track { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.1); overflow: hidden; }
+    .hocl-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--blue), var(--accent)); transition: width 0.4s ease; }
+
+    .disclaimer { font-size: 11px; color: rgba(240,248,255,0.35); text-align: center; margin-top: 12px; line-height: 1.5; }
+
+    /* ── Reference table ── */
+    .ref-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
+    .ref-row:last-child { border-bottom: none; }
+    .ref-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .dot-red    { background: var(--red); }
+    .dot-yellow { background: var(--yellow); }
+    .dot-green  { background: var(--green); }
+    .ref-range { flex: 0 0 86px; font-weight: 600; }
+    .ref-note  { color: var(--muted); font-size: 12px; }
+
+    /* ── Saved pools chips ── */
+    .pools-row {
+      display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
+      scrollbar-width: none;
+    }
+    .pools-row::-webkit-scrollbar { display: none; }
+
+    .pool-chip {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(0,198,255,0.1);
+      border: 1px solid rgba(0,198,255,0.25);
+      border-radius: 20px; padding: 6px 12px;
+      white-space: nowrap; cursor: pointer;
+      font-size: 12px; font-weight: 600; color: var(--accent);
+      transition: background 0.15s;
+      flex-shrink: 0;
+    }
+    .pool-chip:active { background: rgba(0,198,255,0.22); }
+    .pool-chip.selected {
+      background: rgba(0,198,255,0.22);
+      border-color: var(--accent);
+    }
+    .chip-x {
+      color: rgba(0,198,255,0.6); font-size: 14px; line-height: 1;
+      cursor: pointer; padding: 0 0 0 2px;
+    }
+    .chip-add {
+      background: rgba(255,255,255,0.06);
+      border: 1px dashed rgba(255,255,255,0.2);
+      color: var(--muted);
+    }
+
+    /* ── Dose result ── */
+    .dose-result { display: none; }
+    .dose-result.show { display: block; }
+
+    .dose-amount-block { text-align: center; padding: 8px 0 6px; }
+    .dose-number {
+      font-size: 56px; font-weight: 900; line-height: 1; letter-spacing: -1px;
+      background: linear-gradient(135deg, #fff 20%, var(--accent));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .dose-unit { font-size: 18px; color: var(--muted); margin-top: 2px; }
+    .dose-sub  { font-size: 13px; color: rgba(240,248,255,0.4); margin-top: 4px; }
+    .dose-note {
+      font-size: 12.5px; color: var(--muted);
+      background: rgba(0,198,255,0.06);
+      border: 1px solid rgba(0,198,255,0.15);
+      border-radius: 10px; padding: 10px 12px;
+      margin-top: 12px; line-height: 1.55;
+    }
+
+    /* ── History ── */
+    .hist-empty {
+      text-align: center; padding: 50px 20px;
+      color: var(--muted); font-size: 14px; line-height: 1.6;
+    }
+    .hist-empty .hist-empty-icon { font-size: 40px; display: block; margin-bottom: 12px; opacity: 0.5; }
+
+    .hist-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .hist-clear { font-size: 12px; color: rgba(239,68,68,0.7); background: none; border: none; cursor: pointer; padding: 4px 8px; }
+    .hist-clear:active { color: var(--red); }
+
+    .hist-entry {
+      background: var(--card);
+      border: 1px solid var(--bdr);
+      border-radius: 13px;
+      padding: 13px 15px;
+      margin-bottom: 10px;
+    }
+    .hist-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+    .hist-readings { font-size: 12px; color: var(--muted); }
+    .hist-time { font-size: 11px; color: rgba(240,248,255,0.35); }
+    .hist-bottom { display: flex; align-items: center; gap: 10px; }
+    .hist-ppm { font-size: 28px; font-weight: 800; letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #fff 20%, var(--accent));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hist-ppm-label { font-size: 12px; color: var(--muted); align-self: flex-end; margin-bottom: 4px; }
+    .hist-badge { margin-left: auto; }
+    .hist-badge .badge { font-size: 12px; padding: 5px 12px; }
+
+    /* ── Install banner ── */
+    #install-banner { display: none; text-align: center; }
+    #install-banner.show { display: block; }
+    #ios-hint { display: none; font-size: 13px; color: var(--muted); line-height: 1.6; padding: 6px 0; }
+    .install-btn {
+      background: rgba(0,198,255,0.12); border: 1px solid rgba(0,198,255,0.3);
+      border-radius: 12px; color: var(--accent); font-size: 14px; font-weight: 700;
+      padding: 12px 20px; cursor: pointer; width: 100%;
+    }
+
+    /* ── °C / °F toggle ── */
+    .unit-toggle {
+      display: flex;
+      background: rgba(0,0,0,0.3);
+      border: 1.5px solid rgba(255,255,255,0.16);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .unit-opt {
+      flex: 1; background: none; border: none;
+      color: var(--muted); font-size: 13px; font-weight: 700;
+      padding: 10px 0; cursor: pointer; transition: all 0.2s;
+      letter-spacing: 0.3px;
+    }
+    .unit-opt.active {
+      background: rgba(0,198,255,0.2);
+      color: var(--accent);
+    }
+
+    footer { text-align: center; padding: 14px 0 6px; font-size: 10px; color: rgba(240,248,255,0.18); line-height: 1.7; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ══════════════ PAGE: CALC ══════════════ -->
+  <div class="page active" id="page-calc">
+    <header>
+      <span class="logo">🏊</span>
+      <h1>Chlorine Calculator</h1>
+      <p class="subtitle">ORP + pH → Free Chlorine PPM</p>
+    </header>
+
+    <div class="card">
+      <div class="input-row">
+        <div class="field">
+          <label for="orp">ORP (mV)</label>
+          <input class="big-input" type="number" id="orp" placeholder="750"
+                 min="200" max="1100" step="1" inputmode="numeric">
+          <div class="hint">typical 650–850</div>
+        </div>
+        <div class="field">
+          <label for="ph">pH</label>
+          <input class="big-input" type="number" id="ph" placeholder="7.4"
+                 min="5.0" max="9.5" step="0.1" inputmode="decimal">
+          <div class="hint">typical 7.2–7.6</div>
+        </div>
+      </div>
+      <hr style="margin:14px 0 16px">
+      <div class="field-label" style="margin-bottom:10px;">Water Temperature</div>
+      <div style="display:flex;gap:10px;align-items:flex-start;">
+        <div class="field" style="flex:1">
+          <input class="big-input" type="number" id="tempInput"
+                 value="25" min="-5" max="55" step="0.5" inputmode="decimal"
+                 style="font-size:22px;padding:13px 10px;">
+          <div class="hint" id="tempHint">standard ref. temp (25 °C / 77 °F)</div>
+        </div>
+        <div style="flex:0 0 72px;">
+          <div class="unit-toggle">
+            <button class="unit-opt active" id="btnC">°C</button>
+            <button class="unit-opt" id="btnF">°F</button>
+          </div>
+        </div>
+      </div>
+      <button class="btn" id="calcBtn">Calculate Chlorine</button>
+    </div>
+
+    <div class="card result-card" id="resultCard">
+      <div class="ppm-block">
+        <div class="ppm-number" id="ppmVal">—</div>
+        <div class="ppm-label">ppm  free chlorine</div>
+      </div>
+      <div class="badge-wrap"><span class="badge" id="badge">—</span></div>
+      <p class="rec" id="rec"></p>
+      <hr>
+      <div class="breakdown">
+        <div class="hocl-bar-wrap">
+          <div class="hocl-bar-label">
+            <span>HOCl — active disinfecting form</span>
+            <span id="hoclPct">—%</span>
+          </div>
+          <div class="hocl-bar-track"><div class="hocl-bar-fill" id="hoclBar" style="width:0%"></div></div>
+          <div class="hint" style="text-align:left;margin-top:4px;">OCl⁻ makes up the rest — less effective at disinfection</div>
+        </div>
+        <hr>
+        <div class="br-row"><span class="br-label">HOCl concentration</span><span class="br-val" id="hoclPpm">—</span></div>
+        <div class="br-row"><span class="br-label">ORP entered</span><span class="br-val" id="orpOut">—</span></div>
+        <div class="br-row"><span class="br-label">pH entered</span><span class="br-val" id="phOut">—</span></div>
+        <div class="br-row"><span class="br-label">Water temperature</span><span class="br-val" id="tempOut">—</span></div>
+      </div>
+      <div class="disclaimer">⚠️ Approximate — temperature-corrected result. Always verify with a colorimetric DPD test kit.</div>
+    </div>
+
+    <div class="card">
+      <div class="sec-label">Pool / Spa Reference Ranges</div>
+      <div class="ref-row"><div class="ref-dot dot-red"></div><div class="ref-range">&lt; 1.0 ppm</div><div class="ref-note">Too low — unsafe, add chlorine now</div></div>
+      <div class="ref-row"><div class="ref-dot dot-yellow"></div><div class="ref-range">1.0 – 2.0 ppm</div><div class="ref-note">Low — borderline, monitor closely</div></div>
+      <div class="ref-row"><div class="ref-dot dot-green"></div><div class="ref-range">2.0 – 4.0 ppm</div><div class="ref-note">Ideal — safe to swim</div></div>
+      <div class="ref-row"><div class="ref-dot dot-yellow"></div><div class="ref-range">4.0 – 6.0 ppm</div><div class="ref-note">High — may irritate eyes/skin</div></div>
+      <div class="ref-row"><div class="ref-dot dot-red"></div><div class="ref-range">&gt; 6.0 ppm</div><div class="ref-note">Too high — stay out of pool</div></div>
+    </div>
+
+    <div class="card" id="install-banner">
+      <div class="sec-label" style="text-align:center">Install as App</div>
+      <button class="install-btn" id="installBtn">⬇ Add to Home Screen</button>
+      <div id="ios-hint">Tap <strong>Share ⎋</strong> in Safari, then <strong>"Add to Home Screen"</strong>.</div>
+    </div>
+
+    <footer>Formula: FCl = 10^((ORP + 50×pH − 1075) ÷ 166)<br>Calibrated for pool/spa ORP probes (Ag/AgCl reference)</footer>
+  </div>
+
+  <!-- ══════════════ PAGE: DOSE ══════════════ -->
+  <div class="page" id="page-dose">
+    <header>
+      <span class="logo">⚗️</span>
+      <h1>Dosing Calculator</h1>
+      <p class="subtitle">How much chemical to add</p>
+    </header>
+
+    <!-- Saved pools -->
+    <div class="card">
+      <div class="sec-label">Select Pool</div>
+      <div class="pools-row" id="poolsRow">
+        <!-- chips injected by JS -->
+      </div>
+      <div style="margin-top:14px;">
+        <label for="doseGallons">Pool Volume (gallons)</label>
+        <input class="reg-input" type="number" id="doseGallons"
+               placeholder="e.g. 400000" min="100" max="10000000" step="1" inputmode="numeric">
+      </div>
+      <button class="btn btn-sm" style="margin-top:10px;width:auto;padding:9px 16px;" id="savePoolBtn">＋ Save This Pool</button>
+    </div>
+
+    <!-- What to adjust -->
+    <div class="card">
+      <div class="input-row" style="gap:12px;align-items:flex-end;">
+        <div class="field" style="flex:1.4">
+          <label for="doseAdjust">Adjusting</label>
+          <select id="doseAdjust">
+            <option value="cl_up">Free Chlorine ↑ Raise</option>
+            <option value="cl_down">Free Chlorine ↓ Lower</option>
+            <option value="alk_up">Total Alkalinity ↑ Raise</option>
+            <option value="ph_down">pH ↓ Lower</option>
+          </select>
+        </div>
+        <div class="field" style="flex:1">
+          <label for="doseAmount">By how much</label>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input class="reg-input" type="number" id="doseAmount"
+                   placeholder="2.0" min="0.1" max="500" step="0.1" inputmode="decimal"
+                   style="flex:1;">
+            <span id="doseAmtUnit" style="color:var(--muted);font-size:13px;white-space:nowrap;">ppm</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:14px;">
+        <label for="doseChemical">Chemical</label>
+        <select id="doseChemical">
+          <!-- populated by JS based on doseAdjust -->
+        </select>
+      </div>
+
+      <button class="btn" id="doseBtn">Calculate Dose</button>
+    </div>
+
+    <!-- Dose result -->
+    <div class="card dose-result" id="doseResult">
+      <div class="dose-amount-block">
+        <div class="dose-number" id="doseNum">—</div>
+        <div class="dose-unit" id="doseUnit">—</div>
+        <div class="dose-sub" id="doseSub"></div>
+      </div>
+      <div class="dose-note" id="doseNote"></div>
+    </div>
+
+    <div class="card" style="padding:14px 16px;">
+      <p style="font-size:12px;color:var(--muted);line-height:1.6;">
+        <strong style="color:rgba(240,248,255,0.7);">pH dosing note</strong> — muriatic acid estimates assume ~100 ppm total alkalinity. Higher TA requires more acid; lower TA requires less. For precise pH work, use a full water balance calculator with your actual TA reading.
+      </p>
+    </div>
+
+    <footer>Chemical factors from first-principles chemistry.<br>Always verify with test kit after treatment.</footer>
+  </div>
+
+  <!-- ══════════════ PAGE: HISTORY ══════════════ -->
+  <div class="page" id="page-history">
+    <header>
+      <span class="logo">📋</span>
+      <h1>Reading History</h1>
+      <p class="subtitle">Past ORP + pH calculations</p>
+    </header>
+
+    <div id="histContainer">
+      <!-- injected by JS -->
+    </div>
+  </div>
+
+</div><!-- .app -->
+
+<!-- ══════════════ TAB BAR ══════════════ -->
+<nav class="tabbar">
+  <button class="tab active" data-page="calc">
+    <span class="tab-icon">🧪</span>
+    <span>Calc</span>
+  </button>
+  <button class="tab" data-page="dose">
+    <span class="tab-icon">⚗️</span>
+    <span>Dose</span>
+  </button>
+  <button class="tab" data-page="history">
+    <span class="tab-icon">📋</span>
+    <span>History</span>
+  </button>
+</nav>
+
+<script>
+/* ═══════════════════════════════════════════
+   CHEMISTRY / DOSING DATA
+   ═══════════════════════════════════════════ */
+// factor = fl oz (liquid) or oz weight (solid) needed per gallon of pool water per 1 ppm change
+// Derived from first-principles:
+//   Cl2_needed_g = gallons × 3.785 L/gal × ppm mg/L / 1000
+//   amount_oz = Cl2_needed_g / (available_Cl_fraction × weight_per_oz_of_product)
+const CHEMICALS = {
+  cl_up: [
+    { id: 'naocl125', name: 'Liquid Chlorine 12.5%',     liquid: true,
+      factor: 1/1143.4,  // fl oz per gal per ppm  (density 1.17 g/mL, 12.5% Cl2)
+      note: 'Pour slowly around the pool perimeter or into the surge tank while the pump is running.' },
+    { id: 'naocl10',  name: 'Liquid Chlorine 10%',       liquid: true,
+      factor: 1/859.1,
+      note: 'Pour slowly around the pool perimeter or into the surge tank while the pump is running.' },
+    { id: 'calhypo',  name: 'Cal-Hypo 68% (granular)',   liquid: false,
+      factor: 1/5093,    // oz weight per gal per ppm  (0.68 Cl2 fraction)
+      note: 'Pre-dissolve in a bucket of pool water first. Never add directly to pool — risk of fire or explosion.' },
+    { id: 'dichlor',  name: 'Dichlor 62% (granular)',    liquid: false,
+      factor: 1/4644,
+      note: 'Also adds CYA to the water — not ideal for indoor pools long-term as CYA accumulates.' },
+    { id: 'trichlor', name: 'Trichlor 90% (slow tabs)',  liquid: false,
+      factor: 1/6741,
+      note: 'Slow-dissolving. Also lowers pH and adds CYA. Not recommended for indoor or high-bather-load pools.' },
+  ],
+  cl_down: [
+    { id: 'thiosulf', name: 'Sodium Thiosulfate (granular)', liquid: false,
+      factor: 2/10000,   // 2 oz per 10,000 gal per 1 ppm (industry standard)
+      note: 'Broadcast evenly over the pool surface while the pump is running. Retest after 30–60 minutes.' },
+  ],
+  alk_up: [
+    { id: 'bicarb',   name: 'Sodium Bicarbonate (baking soda)', liquid: false,
+      factor: 24/100000, // 1.5 lbs (24 oz) per 10,000 gal per 10 ppm → 24/100000 per gal per ppm
+      note: 'Pre-dissolve in a bucket of water. Add near return jets. Allow 6+ hours to fully circulate before retesting.' },
+  ],
+  ph_down: [
+    { id: 'muriatic_31', name: 'Muriatic Acid 31.45%', liquid: true,
+      // ~32 fl oz per 10,000 gal per 0.2 pH unit → 32/(10000×0.2) = 0.016 fl oz per gal per pH unit
+      // Assumes total alkalinity ~100 ppm. Higher TA = more acid needed.
+      factor: 0.016,
+      note: 'Add slowly to a surge tank or high-flow area while the pump is running. NEVER pour water into acid. ⚠️ Estimate assumes ~100 ppm total alkalinity — if TA is higher, you will need proportionally more.' },
+    { id: 'dry_acid', name: 'Dry Acid 93.2% (sodium bisulfate)', liquid: false,
+      // ~19.4 oz per 10,000 gal per 0.2 pH unit → 0.0097 oz per gal per pH unit
+      factor: 0.0097,
+      note: 'Pre-dissolve in a bucket of water before adding. Never mix with chlorine products. ⚠️ Estimate assumes ~100 ppm total alkalinity.' },
+  ],
+};
+
+/* ═══════════════════════════════════════════
+   LOCAL STORAGE
+   ═══════════════════════════════════════════ */
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem('cl2_history') || '[]'); } catch { return []; }
+}
+function pushHistory(entry) {
+  const h = getHistory();
+  h.unshift(entry);
+  if (h.length > 100) h.length = 100;
+  localStorage.setItem('cl2_history', JSON.stringify(h));
+}
+function clearHistory() {
+  localStorage.removeItem('cl2_history');
+}
+
+function getPools() {
+  try { return JSON.parse(localStorage.getItem('cl2_pools') || '[]'); } catch { return []; }
+}
+function savePools(p) { localStorage.setItem('cl2_pools', JSON.stringify(p)); }
+
+/* ═══════════════════════════════════════════
+   UTILITIES
+   ═══════════════════════════════════════════ */
+function fmt(n, d) { return Number(n.toFixed(d)).toLocaleString(undefined, {maximumFractionDigits: d}); }
+
+function relTime(iso) {
+  const d = (Date.now() - new Date(iso)) / 1000;
+  if (d < 60)    return 'Just now';
+  if (d < 3600)  return Math.floor(d/60) + 'm ago';
+  if (d < 86400) return Math.floor(d/3600) + 'h ago';
+  if (d < 172800) return 'Yesterday';
+  return new Date(iso).toLocaleDateString(undefined, {month:'short', day:'numeric'});
+}
+
+function statusFor(fcl) {
+  if (fcl < 1.0) return { cls:'badge-danger', icon:'🔴', label:'Too Low',
+    rec:'Free chlorine is dangerously low. Add chlorine and retest before allowing entry.' };
+  if (fcl < 2.0) return { cls:'badge-low', icon:'🟡', label:'Low',
+    rec:'Chlorine is on the low side. Consider adding chlorine and retesting in 30 minutes.' };
+  if (fcl <= 4.0) return { cls:'badge-safe', icon:'🟢', label:'Ideal',
+    rec:'Free chlorine is in the ideal range. Pool is safe to use.' };
+  if (fcl <= 6.0) return { cls:'badge-low', icon:'🟡', label:'High',
+    rec:'Chlorine is elevated. Allow the pool to sit and retest before use.' };
+  return { cls:'badge-danger', icon:'🔴', label:'Too High',
+    rec:'Chlorine is too high — close the pool and allow it to dissipate.' };
+}
+
+function formatLiquid(floz) {
+  if (floz < 32)  return { primary: fmt(floz,1) + ' fl oz', sub: '' };
+  if (floz < 128) return { primary: fmt(floz,1) + ' fl oz', sub: fmt(floz/32,2) + ' quarts' };
+  return { primary: fmt(floz/128, 2) + ' gallons', sub: fmt(floz,0) + ' fl oz' };
+}
+function formatSolid(oz) {
+  if (oz < 16) return { primary: fmt(oz,1) + ' oz', sub: '' };
+  return { primary: fmt(oz/16, 2) + ' lbs', sub: fmt(oz,1) + ' oz' };
+}
+
+/* ═══════════════════════════════════════════
+   TAB NAVIGATION
+   ═══════════════════════════════════════════ */
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const id = btn.dataset.page;
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('page-' + id).classList.add('active');
+    btn.classList.add('active');
+    if (id === 'history') renderHistory();
+    if (id === 'dose')    renderPoolChips();
+  });
+});
+
+/* ═══════════════════════════════════════════
+   CALCULATOR (page 1)
+   ═══════════════════════════════════════════ */
+/* ── Temperature helpers ── */
+let tempUnit = 'C';
+
+function setTempUnit(unit) {
+  const input = document.getElementById('tempInput');
+  const cur   = parseFloat(input.value);
+  if (unit === 'F' && tempUnit === 'C') {
+    input.value = fmt(cur * 9/5 + 32, 1);
+    input.min = '23'; input.max = '131'; input.step = '1';
+  } else if (unit === 'C' && tempUnit === 'F') {
+    input.value = fmt((cur - 32) * 5/9, 1);
+    input.min = '-5'; input.max = '55'; input.step = '0.5';
+  }
+  tempUnit = unit;
+  document.getElementById('btnC').classList.toggle('active', unit === 'C');
+  document.getElementById('btnF').classList.toggle('active', unit === 'F');
+  updateTempHint();
+}
+
+function getTempC() {
+  const v = parseFloat(document.getElementById('tempInput').value);
+  if (isNaN(v)) return 25;
+  return tempUnit === 'F' ? (v - 32) * 5/9 : v;
+}
+
+function updateTempHint() {
+  const c = getTempC();
+  const f = c * 9/5 + 32;
+  const hint = document.getElementById('tempHint');
+  if (Math.abs(c - 25) < 0.3) hint.textContent = 'standard reference temp (77 °F)';
+  else hint.textContent = fmt(c, 1) + ' °C = ' + fmt(f, 1) + ' °F';
+}
+
+document.getElementById('btnC').addEventListener('click', () => setTempUnit('C'));
+document.getElementById('btnF').addEventListener('click', () => setTempUnit('F'));
+document.getElementById('tempInput').addEventListener('input', updateTempHint);
+
+function calcChlorine(orp, ph, tempC) {
+  const T_K   = tempC + 273.15;
+  const T_ref = 298.15;
+  // HOCl pKa shifts with temperature (Stumm & Morgan / White's Handbook)
+  const pKa_T     = 3000 / T_K - 10.0686 + 0.0253 * T_K;
+  // Nernst slopes (mV/decade and mV/pH) scale linearly with absolute temperature
+  const slope_T   = 166 * T_K / T_ref;
+  const phCoeff_T = 50  * T_K / T_ref;
+  // Combined E° and Ag/AgCl reference drift ≈ 2 mV/°C
+  const const_T   = 1075 + (25 - tempC) * 2.0;
+  const fcl   = Math.pow(10, (orp + phCoeff_T * ph - const_T) / slope_T);
+  const fHOCl = 1 / (1 + Math.pow(10, ph - pKa_T));
+  return { fcl, fHOCl, hocl: fcl * fHOCl };
+}
+
+document.getElementById('calcBtn').addEventListener('click', calculate);
+document.addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); });
+
+function calculate() {
+  const orp = parseFloat(document.getElementById('orp').value);
+  const ph  = parseFloat(document.getElementById('ph').value);
+
+  if (isNaN(orp) || isNaN(ph)) { alert('Enter both ORP (mV) and pH values.'); return; }
+  if (ph < 5 || ph > 9.5)      { alert('pH should be between 5.0 and 9.5.');  return; }
+  if (orp < 200 || orp > 1100) { alert('ORP should be between 200 and 1100 mV.'); return; }
+
+  const tempC = getTempC();
+  if (tempC < 0 || tempC > 50) { alert('Temperature should be between 0 °C and 50 °C.'); return; }
+
+  const { fcl, fHOCl, hocl } = calcChlorine(orp, ph, tempC);
+  const st = statusFor(fcl);
+  const hoclPct = fHOCl * 100;
+
+  document.getElementById('ppmVal').textContent  = fmt(fcl, 2);
+  document.getElementById('hoclPct').textContent = fmt(hoclPct, 1) + '%';
+  document.getElementById('hoclBar').style.width = fmt(hoclPct, 1) + '%';
+  document.getElementById('hoclPpm').textContent = fmt(hocl, 3) + ' ppm';
+  document.getElementById('orpOut').textContent  = orp + ' mV';
+  document.getElementById('phOut').textContent   = fmt(ph, 1);
+  document.getElementById('tempOut').textContent = fmt(tempC, 1) + ' °C / ' + fmt(tempC * 9/5 + 32, 1) + ' °F';
+  document.getElementById('rec').textContent     = st.rec;
+
+  const badge = document.getElementById('badge');
+  badge.className = 'badge ' + st.cls;
+  badge.textContent = st.icon + ' ' + st.label;
+
+  document.getElementById('resultCard').classList.add('show');
+  document.getElementById('resultCard').scrollIntoView({ behavior:'smooth', block:'nearest' });
+  if (navigator.vibrate) navigator.vibrate(30);
+
+  // Save to history
+  pushHistory({ ts: new Date().toISOString(), orp, ph, tempC,
+                fcl: parseFloat(fcl.toFixed(3)),
+                status: st.label, statusCls: st.cls, icon: st.icon });
+}
+
+/* ═══════════════════════════════════════════
+   DOSE CALCULATOR (page 2)
+   ═══════════════════════════════════════════ */
+function populateChemicals() {
+  const adj  = document.getElementById('doseAdjust').value;
+  const sel  = document.getElementById('doseChemical');
+  sel.innerHTML = '';
+  CHEMICALS[adj].forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = c.name;
+    sel.appendChild(opt);
+  });
+  document.getElementById('doseAmtUnit').textContent = adj === 'ph_down' ? 'pH units' : 'ppm';
+  document.getElementById('doseResult').classList.remove('show');
+}
+
+document.getElementById('doseAdjust').addEventListener('change', populateChemicals);
+populateChemicals(); // init
+
+document.getElementById('doseBtn').addEventListener('click', () => {
+  const gallons = parseFloat(document.getElementById('doseGallons').value);
+  const amount  = parseFloat(document.getElementById('doseAmount').value);
+  const adj     = document.getElementById('doseAdjust').value;
+  const chemId  = document.getElementById('doseChemical').value;
+
+  if (isNaN(gallons) || gallons <= 0) { alert('Enter a valid pool volume in gallons.'); return; }
+  if (isNaN(amount)  || amount  <= 0) { alert('Enter a valid amount to change.'); return; }
+
+  const chem = CHEMICALS[adj].find(c => c.id === chemId);
+  const raw  = gallons * amount * chem.factor; // fl oz or oz weight
+
+  let display, sub;
+  if (chem.liquid) {
+    const f = formatLiquid(raw); display = f.primary; sub = f.sub;
+  } else {
+    const f = formatSolid(raw);  display = f.primary; sub = f.sub;
+  }
+
+  const adjLabels = { cl_up:'raise', cl_down:'lower', alk_up:'raise', ph_down:'lower' };
+  const whatLabel = { cl_up:'FCl', cl_down:'FCl', alk_up:'alkalinity', ph_down:'pH' };
+  const amtUnit   = adj === 'ph_down' ? 'pH units' : 'ppm';
+
+  document.getElementById('doseNum').textContent  = display.split(' ')[0];
+  document.getElementById('doseUnit').textContent = display.split(' ').slice(1).join(' ') +
+    ' of ' + chem.name;
+  document.getElementById('doseSub').textContent  = sub
+    ? `(${sub}) to ${adjLabels[adj]} ${whatLabel[adj]} by ${amount} ${amtUnit} in ${gallons.toLocaleString()} gal`
+    : `to ${adjLabels[adj]} ${whatLabel[adj]} by ${amount} ${amtUnit} in ${gallons.toLocaleString()} gal`;
+  document.getElementById('doseNote').textContent = '⚠️ ' + chem.note;
+
+  document.getElementById('doseResult').classList.add('show');
+  document.getElementById('doseResult').scrollIntoView({ behavior:'smooth', block:'nearest' });
+  if (navigator.vibrate) navigator.vibrate(30);
+});
+
+/* ── Saved pools ── */
+function renderPoolChips() {
+  const row   = document.getElementById('poolsRow');
+  const pools = getPools();
+  row.innerHTML = '';
+
+  pools.forEach((p, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'pool-chip';
+    const vol = p.gallons >= 1000000
+      ? (p.gallons/1000000).toFixed(1) + 'M'
+      : p.gallons >= 1000 ? Math.round(p.gallons/1000) + 'K' : p.gallons;
+    chip.innerHTML = `${p.name} <span style="opacity:.7">(${vol})</span>
+      <span class="chip-x" data-i="${i}" title="Delete">×</span>`;
+    chip.addEventListener('click', (e) => {
+      if (e.target.classList.contains('chip-x')) {
+        const pools2 = getPools();
+        pools2.splice(parseInt(e.target.dataset.i), 1);
+        savePools(pools2);
+        renderPoolChips();
+        return;
+      }
+      document.getElementById('doseGallons').value = p.gallons;
+      document.querySelectorAll('.pool-chip').forEach(c => c.classList.remove('selected'));
+      chip.classList.add('selected');
+    });
+    row.appendChild(chip);
+  });
+
+  const addChip = document.createElement('div');
+  addChip.className = 'pool-chip chip-add';
+  addChip.textContent = '＋ Add pool';
+  addChip.addEventListener('click', () => {
+    const name = prompt('Pool name (e.g. "Wave Pool"):');
+    if (!name) return;
+    const gal = parseInt(prompt('Volume in gallons:'));
+    if (!gal || gal <= 0) return;
+    const pools2 = getPools();
+    pools2.push({ name: name.trim(), gallons: gal });
+    savePools(pools2);
+    renderPoolChips();
+    document.getElementById('doseGallons').value = gal;
+  });
+  row.appendChild(addChip);
+}
+renderPoolChips();
+
+document.getElementById('savePoolBtn').addEventListener('click', () => {
+  const gal = parseInt(document.getElementById('doseGallons').value);
+  if (!gal || gal <= 0) { alert('Enter a pool volume first.'); return; }
+  const name = prompt('Name for this pool:');
+  if (!name) return;
+  const pools = getPools();
+  pools.push({ name: name.trim(), gallons: gal });
+  savePools(pools);
+  renderPoolChips();
+});
+
+/* ═══════════════════════════════════════════
+   HISTORY (page 3)
+   ═══════════════════════════════════════════ */
+function renderHistory() {
+  const container = document.getElementById('histContainer');
+  const hist = getHistory();
+
+  if (hist.length === 0) {
+    container.innerHTML = `
+      <div class="hist-empty">
+        <span class="hist-empty-icon">📋</span>
+        No readings yet.<br>Use the <strong>Calc</strong> tab to add your first reading.
+      </div>`;
+    return;
+  }
+
+  let html = `<div class="hist-header">
+    <div class="sec-label" style="margin-bottom:0">${hist.length} Reading${hist.length!==1?'s':''}</div>
+    <button class="hist-clear" id="clearHistBtn">Clear All</button>
+  </div>`;
+
+  hist.forEach(e => {
+    html += `
+    <div class="hist-entry">
+      <div class="hist-top">
+        <div class="hist-readings">ORP ${e.orp} mV &nbsp;·&nbsp; pH ${e.ph}${e.tempC !== undefined ? ' &nbsp;·&nbsp; ' + e.tempC.toFixed(1) + ' °C' : ''}</div>
+        <div class="hist-time">${relTime(e.ts)}</div>
+      </div>
+      <div class="hist-bottom">
+        <span class="hist-ppm">${e.fcl}</span>
+        <span class="hist-ppm-label">ppm FCl</span>
+        <span class="hist-badge"><span class="badge ${e.statusCls}">${e.icon} ${e.status}</span></span>
+      </div>
+    </div>`;
+  });
+
+  container.innerHTML = html;
+
+  document.getElementById('clearHistBtn').addEventListener('click', () => {
+    if (confirm('Clear all history?')) { clearHistory(); renderHistory(); }
+  });
+}
+
+/* ═══════════════════════════════════════════
+   PWA INSTALL
+   ═══════════════════════════════════════════ */
+let deferredPrompt = null;
+const isIOS = /ipad|iphone|ipod/i.test(navigator.userAgent) && !window.MSStream;
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+
+if (!isStandalone) {
+  if (isIOS) {
+    document.getElementById('install-banner').classList.add('show');
+    document.getElementById('ios-hint').style.display = 'block';
+  }
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault(); deferredPrompt = e;
+    document.getElementById('install-banner').classList.add('show');
+  });
+  document.getElementById('installBtn').addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') document.getElementById('install-banner').classList.remove('show');
+    deferredPrompt = null;
+  });
+}
+
+/* ═══════════════════════════════════════════
+   SERVICE WORKER
+   ═══════════════════════════════════════════ */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>

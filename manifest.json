@@ -1,0 +1,19 @@
+{
+  "name": "Chlorine PPM Calculator",
+  "short_name": "Cl₂ Calc",
+  "description": "Convert ORP + pH readings to free chlorine PPM for pool and spa water.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0a1f3c",
+  "background_color": "#0a1f3c",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
