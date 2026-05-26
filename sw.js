@@ -1,5 +1,12 @@
-const CACHE = 'cl2calc-v1';
-const ASSETS = ['./', './index.html', './manifest.json', './icon.svg'];
+const CACHE = 'cl2calc-v3';
+const BASE  = '/Chlorine-Calculator/';
+const ASSETS = [
+  BASE,
+  BASE + 'index.html',
+  BASE + 'manifest.json',
+  BASE + 'icon.svg',
+  BASE + 'icon-192.png',
+];
 
 self.addEventListener('install', e => {
   e.waitUntil(
